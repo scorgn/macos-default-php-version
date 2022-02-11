@@ -1,0 +1,47 @@
+#!/bin/zsh
+
+default_php_version() {
+  if [ -z "$2" ]; then
+    php_path default "$(php_path $1)"
+    alias pecl="pecl${1}"
+    alias php="$(php_path $1)"
+    alias composer="composer${1}"
+    alias phpunit="phpunit${1}"
+    alias psysh="psysh${1}"
+    return 0
+  fi
+  php_path $1 $2 --alias
+}
+
+php_path() {
+  zparseopts -K -E -D -- -alias=alias
+
+  if [ -z "$2" ] && [ -z "$1" ]; then
+    if [ -z "$_PHP_PATHS" ]; then
+      echo "No PHP paths set" >&2
+      return 1
+    fi
+    for key value in ${(kv)_PHP_PATHS}; do
+      echo "$key -> $value"
+    done
+    return 0
+  fi
+  if [ -z "$2" ]; then
+    eval "echo \$PHP${1}_PATH"
+    return $?
+  fi
+  _composer_path="$1"
+  _php_path="$2"
+  if [ ! -z "$alias" ]; then
+    _composer_path=$2
+    _php_path=$(php_path $2)
+  fi
+  eval "PHP${1}_PATH=\"${_php_path}\""
+  alias "php${1}"="$_php_path"
+  alias "phpunit${1}"="$_php_path ./vendor/bin/phpunit -c ./tests/phpunit.xml ./tests/"
+  alias "composer${1}"="COMPOSER_HOME=\"\$HOME/.composer${_composer_path}\" $_php_path \$(whence -p composer)"
+  alias "psysh${1}"="$_php_path \$(whence -p psysh)"
+  alias "pecl${1}"="PHP_PEAR_PHP_BIN=\"$_php_path\" \$(whence -p pecl)"
+  _PHP_PATHS[${1}]="${_php_path}"
+}
+declare -A _PHP_PATHS
